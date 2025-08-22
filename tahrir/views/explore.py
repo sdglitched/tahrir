@@ -4,7 +4,7 @@ from datetime import date, timedelta, timezone
 import sqlalchemy as sa
 import tahrir_api.model as m
 from feedgen.feed import FeedGenerator
-from flask import g, redirect, render_template, request, url_for
+from flask import g, redirect, render_template, request, url_for, jsonify
 
 from ..utils.badge import sort_badges_by_tag
 from . import blueprint as bp
@@ -93,6 +93,58 @@ def explore_badges():
         newest_uncategorized=newest_uncategorized,
         newest_badges=newest_badges,
     )
+
+
+@bp.route("/json/discover/accolade")
+def json_discover_accolade():
+    all_badges = g.tahrirdb.get_all_badges().all()
+    newest_badges = sorted(all_badges, key=lambda badge: badge.created_on, reverse=True)[:40]
+
+    all_badges_by_tag, all_uncategorized = sort_badges_by_tag(all_badges)
+    newest_badges_by_tag, newest_uncategorized = sort_badges_by_tag(newest_badges)
+
+    serializable_all_badges_by_tag = [
+        {
+            "name": item.name,
+            "pict": item.image,
+            "desc": item.description,
+            "time": item.created_on.timestamp(),
+            "give": len(item.assertions)
+        } for item in all_badges_by_tag
+    ]
+    serializable_all_uncategorized = [
+        {
+            "name": item.name,
+            "pict": item.image,
+            "desc": item.description,
+            "time": item.created_on.timestamp(),
+            "give": len(item.assertions)
+        } for item in all_uncategorized
+    ]
+
+    print(all_badges[0].name)
+    print(all_badges[0].image)
+    print(all_badges[0].description)
+    print(all_badges[0].created_on.timestamp())
+    print(len(all_badges[0].assertions))
+    print(dir(all_badges[0]))
+
+    data = {
+        "unclassified": {
+            "newest": newest_uncategorized,
+            "full": all_uncategorized
+        },
+        "classified": {
+            "newest": newest_badges_by_tag,
+            "full": all_badges_by_tag
+        },
+        "disordered": {
+            "newest": newest_badges,
+            "full": all_badges,
+        }
+    }
+
+    return jsonify(data)
 
 
 @bp.route("/explore/badges/rss")
