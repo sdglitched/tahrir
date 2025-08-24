@@ -4,7 +4,7 @@ from datetime import date, timedelta, timezone
 import sqlalchemy as sa
 import tahrir_api.model as m
 from feedgen.feed import FeedGenerator
-from flask import g, redirect, render_template, request, url_for, jsonify
+from flask import g, jsonify, redirect, render_template, request, url_for
 
 from ..utils.badge import sort_badges_by_tag
 from . import blueprint as bp
@@ -100,50 +100,50 @@ def json_discover_accolade():
     all_badges = g.tahrirdb.get_all_badges().all()
     newest_badges = sorted(all_badges, key=lambda badge: badge.created_on, reverse=True)[:40]
 
-    all_badges_by_tag, all_uncategorized = sort_badges_by_tag(all_badges)
-    newest_badges_by_tag, newest_uncategorized = sort_badges_by_tag(newest_badges)
-
+    all_badges_by_tag, _ = sort_badges_by_tag(all_badges)
+    newest_badges_by_tag, _ = sort_badges_by_tag(newest_badges)
     serializable_all_badges_by_tag = [
         {
-            "name": item.name,
-            "pict": item.image,
-            "desc": item.description,
-            "time": item.created_on.timestamp(),
-            "give": len(item.assertions)
-        } for item in all_badges_by_tag
+            "name": badge.name,
+            "image": badge.image,
+            "description": badge.description,
+            "created_on": badge.created_on.timestamp(),
+        } for badge_list in all_badges_by_tag.values() for badge in badge_list
     ]
-    serializable_all_uncategorized = [
+    serializable_newest_badges_by_tag = [
         {
-            "name": item.name,
-            "pict": item.image,
-            "desc": item.description,
-            "time": item.created_on.timestamp(),
-            "give": len(item.assertions)
-        } for item in all_uncategorized
+            "name": badge.name,
+            "image": badge.image,
+            "description": badge.description,
+            "created_on": badge.created_on.timestamp(),
+        } for badge_list in newest_badges_by_tag.values() for badge in badge_list
     ]
-
-    print(all_badges[0].name)
-    print(all_badges[0].image)
-    print(all_badges[0].description)
-    print(all_badges[0].created_on.timestamp())
-    print(len(all_badges[0].assertions))
-    print(dir(all_badges[0]))
-
+    serializable_all_badges = [
+        {
+            "name": badge.name,
+            "image": badge.image,
+            "description": badge.description,
+            "created_on": badge.created_on.timestamp(),
+        } for badge in all_badges
+    ]
+    serializable_newest_badges = [
+        {
+            "name": badge.name,
+            "image": badge.image,
+            "description": badge.description,
+            "created_on": badge.created_on.timestamp(),
+        } for badge in newest_badges
+    ]
     data = {
-        "unclassified": {
-            "newest": newest_uncategorized,
-            "full": all_uncategorized
-        },
         "classified": {
-            "newest": newest_badges_by_tag,
-            "full": all_badges_by_tag
+            "newest": serializable_newest_badges_by_tag,
+            "full": serializable_all_badges_by_tag
         },
         "disordered": {
-            "newest": newest_badges,
-            "full": all_badges,
+            "newest": serializable_newest_badges,
+            "full": serializable_all_badges,
         }
     }
-
     return jsonify(data)
 
 
